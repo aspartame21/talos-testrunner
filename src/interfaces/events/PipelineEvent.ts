@@ -14,6 +14,7 @@ export interface PipelineEvent {
 
 export interface PipelineObjectAttributes {
     detailed_status: Status
+    ref: string
     variables: PipelineVariable[]
 }
 export interface PipelineVariable {
