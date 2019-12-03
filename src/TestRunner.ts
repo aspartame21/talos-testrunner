@@ -8,6 +8,7 @@ import { RepositoryOwners } from "./interfaces/structs/RepositoryOwners";
 
 export default class Approve implements Plugin<any, Promise<any>> {
     private client: GitClient;
+    private config: Config;
 
     constructor(config: Config) {
         this.client = GitProvider.getInstance(config.git)
@@ -55,7 +56,8 @@ export default class Approve implements Plugin<any, Promise<any>> {
     private async triggerPipeline(rx: NoteEvent) {
         const variables = [
             { "key": "MR_ID", "value": rx.merge_request.iid.toString() },
-            { "key": "MR_REF", "value": rx.merge_request.source_branch }
+            { "key": "MR_REF", "value": rx.merge_request.source_branch },
+            { "key": "TEST_TYPE", "value": rx.object_attributes.note.replace('/test ', '') }
         ];
 
         return this.client.Pipelines
@@ -68,20 +70,37 @@ export default class Approve implements Plugin<any, Promise<any>> {
     }
 
     private handlePipelineEvent(rx: PipelineEvent) {
-        const projectId = rx.project.id;
         const status = rx.object_attributes.detailed_status;
+        if (status !== "passed")
+            return
+
+        const projectId = rx.project.id;
         const MR_ID = parseInt(rx.object_attributes.variables.find(v => v.key === "MR_ID").value);
+        const TEST_TYPE = rx.object_attributes.variables.find(v => v.key === "TEST_TYPE").value;
         const jobID = rx.builds.find(b => b.name === "Code Quality").id;
-        const reportUrl = this.generateReportURL(rx.project.web_url, jobID);
-        if (status === "passed")
-            return this.client.MergeRequestNotes.create(projectId, MR_ID, this.generateReportSummary(reportUrl));
+
+        if (TEST_TYPE === 'sonar')
+            return this.client.MergeRequestNotes.create(projectId, MR_ID, this.generateSonarReport(rx));
+
+        if (TEST_TYPE === 'codeclimate')
+            return this.generateCCReport(rx.project.web_url, jobID)
+
+    }
+
+    private generateSonarReport(rx: PipelineEvent) {
+        return `You can review the code quality report by following this [link](${ this.config.sonarqube.sslEnabled ? 'https' : 'http' }//${this.config.sonarqube.host}/dashboard?id=${rx.project.name}&branch=${rx.object_attributes.ref})`
+    }
+
+    private generateCCReport(web_url: string, jobID: number) {
+        const reportUrl = this.generateReportURL(web_url, jobID);
+        return this.generateCCReportSummary(reportUrl)
     }
 
     private generateReportURL(projectURL: string, jobID: number | string) {
         return projectURL + '/-/jobs/' + jobID + "/artifacts/raw/gl-code-quality-report.html?inline=false";
     }
 
-    private generateReportSummary(reportURL: string) {
+    private generateCCReportSummary(reportURL: string) {
         return [
             `The following table represents several test results, 
             say \`/test\` to start them over: `, "",
