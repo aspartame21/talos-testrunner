@@ -12,6 +12,7 @@ export default class Approve implements Plugin<any, Promise<any>> {
 
     constructor(config: Config) {
         this.client = GitProvider.getInstance(config.git)
+        this.config = config
     }
 
     async handle(rx: any): Promise<any> {
@@ -78,17 +79,19 @@ export default class Approve implements Plugin<any, Promise<any>> {
         const MR_ID = parseInt(rx.object_attributes.variables.find(v => v.key === "MR_ID").value);
         const TEST_TYPE = rx.object_attributes.variables.find(v => v.key === "TEST_TYPE").value;
         const jobID = rx.builds.find(b => b.name === "Code Quality").id;
+        let reportNote = "";
 
         if (TEST_TYPE === 'sonar')
-            return this.client.MergeRequestNotes.create(projectId, MR_ID, this.generateSonarReport(rx));
+             reportNote = this.generateSonarReport(rx);
 
         if (TEST_TYPE === 'codeclimate')
-            return this.generateCCReport(rx.project.web_url, jobID)
+             reportNote = this.generateCCReport(rx.project.web_url, jobID);
 
+        return this.client.MergeRequestNotes.create(projectId, MR_ID, reportNote);
     }
 
     private generateSonarReport(rx: PipelineEvent) {
-        return `You can review the code quality report by following this [link](${ this.config.sonarqube.sslEnabled ? 'https' : 'http' }//${this.config.sonarqube.host}/dashboard?id=${rx.project.name}&branch=${rx.object_attributes.ref})`
+        return `You can review the code quality report by following this [link](${this.config.sonarqube.sslEnabled ? 'https' : 'http'}://${this.config.sonarqube.host}/dashboard?id=${rx.project.name}&branch=${rx.object_attributes.ref})`
     }
 
     private generateCCReport(web_url: string, jobID: number) {
