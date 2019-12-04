@@ -2,7 +2,7 @@ import { ObjectKind } from "./GenericEvent";
 import { Project } from "../structs/Project";
 import { Job } from "../structs/Job";
 
-export type Status = 'running' | 'passed' | 'failed'
+export type Status = 'running' | 'passed' | 'failed' | 'success'
 
 export interface PipelineEvent {
     builds: Job[]

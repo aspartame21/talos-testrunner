@@ -72,7 +72,7 @@ export default class Approve implements Plugin<any, Promise<any>> {
 
     private handlePipelineEvent(rx: PipelineEvent) {
         const status = rx.object_attributes.detailed_status;
-        if (status !== "passed")
+        if (status !== "passed" && status !== "success")
             return
 
         const projectId = rx.project.id;
