@@ -72,7 +72,7 @@ export default class Approve implements Plugin<any, Promise<any>> {
 
     private handlePipelineEvent(rx: PipelineEvent) {
         const status = rx.object_attributes.detailed_status;
-        if (status !== "passed")
+        if (status !== "passed" && status !== "success")
             return
 
         const projectId = rx.project.id;
@@ -82,7 +82,7 @@ export default class Approve implements Plugin<any, Promise<any>> {
         let reportNote = "";
 
         if (TEST_TYPE === 'sonar')
-             reportNote = this.generateSonarReport(rx);
+             reportNote = this.generateSonarReport(rx, MR_ID);
 
         if (TEST_TYPE === 'codeclimate')
              reportNote = this.generateCCReport(rx.project.web_url, jobID);
@@ -90,8 +90,10 @@ export default class Approve implements Plugin<any, Promise<any>> {
         return this.client.MergeRequestNotes.create(projectId, MR_ID, reportNote);
     }
 
-    private generateSonarReport(rx: PipelineEvent) {
-        return `You can review the code quality report by following this [link](${this.config.sonarqube.sslEnabled ? 'https' : 'http'}://${this.config.sonarqube.host}/dashboard?id=${rx.project.name}&branch=${rx.object_attributes.ref})`
+    private generateSonarReport(rx: PipelineEvent, MR_ID) {
+        return `You can review the code quality report` +
+         `by following this [link](${this.config.sonarqube.sslEnabled ? 'https' : 'http'}://`+
+         `${this.config.sonarqube.host}/dashboard?id=project-id:${rx.project.id}&branch=${MR_ID})`
     }
 
     private generateCCReport(web_url: string, jobID: number) {
