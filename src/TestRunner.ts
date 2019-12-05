@@ -93,7 +93,7 @@ export default class Approve implements Plugin<any, Promise<any>> {
     private generateSonarReport(rx: PipelineEvent, MR_ID) {
         return `You can review the code quality report` +
          `by following this [link](${this.config.sonarqube.sslEnabled ? 'https' : 'http'}://`+
-         `${this.config.sonarqube.host}/dashboard?id=project-id:${rx.project.id}&branch=${MR_ID})`
+         `${this.config.sonarqube.host}/dashboard?id=project-id:${rx.project.id}&branch=mr-${MR_ID})`
     }
 
     private generateCCReport(web_url: string, jobID: number) {
